@@ -1,45 +1,53 @@
-<div align="center">
+# OrgPilot 🚀
 
-# 🧾 ReceiptBrain
+### *Intelligent Workspace & Roster Management Automation Engine*
 
-### AI Powered Expense Intelligence & Business Growth Assistant
-
-<img src="https://img.shields.io/badge/AI-Agentic%20AI-blue?style=for-the-badge" />
-<img src="https://img.shields.io/badge/Frontend-React%20%2B%20Vite-61DAFB?style=for-the-badge" />
-<img src="https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge" />
-<img src="https://img.shields.io/badge/Database-MongoDB-green?style=for-the-badge" />
-<img src="https://img.shields.io/badge/RAG-FAISS-orange?style=for-the-badge" />
-<img src="https://img.shields.io/badge/Hackathon-Open%20Track-red?style=for-the-badge" />
-
-### 🚀 Transforming Receipts Into Actionable Business Intelligence
-
-ReceiptBrain is an AI-powered business intelligence platform that automatically scans receipts, extracts expenses, calculates GST, stores business transactions, generates reports, and provides smart AI-driven business growth insights using Agentic AI + RAG architecture.
-
-</div>
+OrgPilot is a modern, full-stack enterprise automation portal built to streamline workforce management, internal scheduling, and communication pipelines. By combining an asynchronous Python backend, a reactive web dashboard, and automated notification layers, OrgPilot transforms how business units manage their user rosters and daily operations.
 
 ---
 
-# 🌟 Problem Statement
+## 🎯 Selected Problem Statement
 
-## 🏆 Open Track — AI Agents + Analytics + Automation
+Modern businesses frequently struggle with fragmented administrative tooling. Managing employee records, authenticating manager nodes, scheduling organizational milestones, and tracking corporate communications often require multiple disjointed applications. 
 
-Small businesses and shop owners often struggle with:
-
-- Manual expense tracking
-- Managing hundreds of receipts
-- GST calculations
-- Business spending analysis
-- Vendor monitoring
-- Financial reporting
-- Business decision making
-
-ReceiptBrain solves this using AI agents, automation, analytics, and RAG-powered business intelligence.
+**The Goal:** Build a centralized, secure, and ultra-fast workspace portal that unifies user authentication, dynamic roster management, automated notifications, and background scheduling into a single cohesive interface, dropping infrastructure overhead completely.
 
 ---
 
-# 🎥 Demo Video
+## 🛠️ Tech Stack Used
 
-## 🔗 Demo Link
+| Layer | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Frontend** | React.js, React Router v6, Axios | Responsive UI, Single Page Application routing, API fetching |
+| **Backend** | FastAPI (Python 3.11), Uvicorn | High-performance Asynchronous ASGI API engine |
+| **Database** | MongoDB Atlas, Motor | Non-relational cloud document storage, Async DB driver |
+| **Security** | JSON Web Tokens (JWT), Passlib (Bcrypt) | Cryptographically secure token signing, salted password hashing |
+| **AI Integration** | Gemini API | Intelligent text parsing and core structural processing |
+| **Mailing Service** | Resend API | Enterprise transactional automated mail delivery |
 
-```txt
-ADD_YOUR_DEMO_LINK_HERE
+---
+
+## 📐 Backend Architecture & System Design
+
+OrgPilot utilizes an asynchronous decoupled architecture designed to ensure near-zero latency processing. 
+
+* **State Persistence Layer:** Powered by **MongoDB Atlas**, utilizing non-blocking asynchronous streaming via **Motor** to execute high-throughput database operations.
+* **API Ingress Boundary:** Built on **FastAPI**, implementing a highly scalable modular router layout (`/api/auth`, `/api/employees`, `/api/email`, `/api/scheduler`).
+* **Cross-Origin Crosstalk:** Enabled securely via strict CORS middleware configurations, allowing local frontends to safely access localized or cloud backend parameters.
+
+```text
+[ React Frontend (Vite/Local) ] 
+               │
+               ▼  (HTTP JSON Payloads / JWT Bearer Auth)
+    [ FastAPI Ingress Layer ]
+               │
+      ┌────────┼────────┬────────┐
+      ▼        ▼        ▼        ▼
+   [Auth] [Employee] [Email] [Scheduler]
+      │        │        │        │
+      └────────┼────────┴────────┘
+               ▼
+   [ Motor Async Driver ] ──────► [ Cloud MongoDB Atlas ]
+               │
+               ├────────────────► [ Resend Mailing Service ]
+               └────────────────► [ Gemini Core AI Engine ]

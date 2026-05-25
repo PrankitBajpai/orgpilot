@@ -1,26 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes.auth import router as auth_router
 from dotenv import load_dotenv
+
 load_dotenv()
+
+from routes.auth import router as auth_router
 from routes.chat import router as chat_router
+from routes.ai   import router as ai_router
 
-
-app.include_router(chat_router)
-# ─── APP INIT ───
 app = FastAPI(
     title="OrgPilot API",
     description="AI Communication Agent for Organizations",
     version="1.0.0"
 )
 
-# ─── CORS ───
-# Allows React frontend (localhost:3000) to talk to FastAPI (localhost:8000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",   # React dev server
-        "http://localhost:5173",   # Vite dev server
+        "http://localhost:3000",
+        "http://localhost:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
     ],
@@ -29,17 +27,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── ROUTERS ───
-app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api")
+app.include_router(chat_router, prefix="/api")
+app.include_router(ai_router,   prefix="/api")
 
-# ─── HEALTH CHECK ───
 @app.get("/")
 def root():
-    return {
-        "status": "running",
-        "app":    "OrgPilot API",
-        "docs":   "http://localhost:8000/docs"
-    }
+    return {"status": "running", "app": "OrgPilot API", "docs": "http://localhost:8000/docs"}
 
 @app.get("/health")
 def health():

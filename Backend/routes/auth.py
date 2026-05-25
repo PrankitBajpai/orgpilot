@@ -21,7 +21,7 @@ users_collection = db["users"]
 pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ─── ROUTER ───
-router = APIRouter(prefix="/api", tags=["auth"])
+router = APIRouter(tags=["auth"])
 
 # ─── MODELS ───
 class RegisterRequest(BaseModel):

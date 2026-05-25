@@ -1,14 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorClient
-import os
 import httpx
+import os
 from datetime import datetime
 
 # --- CONFIG ---
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_URL     = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
-MONGO_URL      = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 
 # --- DB ---
 client          = AsyncIOMotorClient(MONGO_URL)
@@ -16,57 +14,61 @@ db              = client["orgpilot"]
 chat_collection = db["chats"]
 
 # --- ROUTER ---
-router = APIRouter(prefix="/api/chat", tags=["chat"])
+router = APIRouter(prefix="/chat", tags=["chat"])
 
 # --- MODELS ---
 class Message(BaseModel):
-    role:    str   # "user" or "assistant"
+    role:    str
     content: str
 
 class ChatRequest(BaseModel):
     session_id: str
     message:    str
     history:    list[Message] = []
+    system:     str = "You are OrgPilot, a helpful AI assistant for organizations. Help with communication, scheduling, emails, and organizational tasks."
 
 # --- ROUTE: Send message ---
 @router.post("/send")
 async def send_message(req: ChatRequest):
-    if not GEMINI_API_KEY:
+    # Read key fresh on every request
+    gemini_api_key = os.getenv("GEMINI_API_KEY")
+    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}"
+
+    if not gemini_api_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY not set")
 
-    # Build Gemini conversation history
     contents = []
     for msg in req.history:
         contents.append({
-            "role": "user" if msg.role == "user" else "model",
+            "role":  "user" if msg.role == "user" else "model",
             "parts": [{"text": msg.content}]
         })
-    # Add current message
+
     contents.append({
-        "role": "user",
+        "role":  "user",
         "parts": [{"text": req.message}]
     })
 
-    # Call Gemini API
+    payload = {
+        "system_instruction": {
+            "parts": [{"text": req.system}]
+        },
+        "contents": contents
+    }
+
     async with httpx.AsyncClient() as client_http:
-        response = await client_http.post(
-            GEMINI_URL,
-            json={
-                "system_instruction": {
-                    "parts": [{"text": "You are OrgPilot, a helpful AI assistant for organizations. Help with communication, scheduling, emails, and organizational tasks."}]
-                },
-                "contents": contents
-            },
-            timeout=30.0
+        res = await client_http.post(
+            gemini_url,
+            json=payload,
+            timeout=30.0,
         )
 
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail=f"Gemini error: {response.text}")
+    if res.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"Gemini error: {res.text}")
 
-    data        = response.json()
-    reply       = data["candidates"][0]["content"]["parts"][0]["text"]
+    data  = res.json()
+    reply = data["candidates"][0]["content"]["parts"][0]["text"]
 
-    # Save to MongoDB
     await chat_collection.insert_one({
         "session_id": req.session_id,
         "user_msg":   req.message,
@@ -74,7 +76,7 @@ async def send_message(req: ChatRequest):
         "timestamp":  datetime.utcnow()
     })
 
-    return {"reply": reply}
+    return {"content": [{"text": reply}]}
 
 
 # --- ROUTE: Get chat history ---

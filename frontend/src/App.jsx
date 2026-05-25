@@ -1,325 +1,739 @@
-import React, { useState } from "react";
-import {
-  Upload,
-  Receipt,
-  IndianRupee,
-  TrendingUp,
-  FileText,
-  Bot,
-  AlertTriangle,
-  Search,
-  Download,
-  Sparkles,
-  BarChart3,
-  MessageCircle,
-  ShieldCheck,
-} from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
-import { motion } from "framer-motion";
-import "./index.css";
+import { useState, useRef, useEffect } from "react";
 
-const categoryData = [
-  { name: "Stock", value: 42000 },
-  { name: "Utilities", value: 8500 },
-  { name: "Rent", value: 15000 },
-  { name: "Logistics", value: 6200 },
-  { name: "Maintenance", value: 4300 },
+/* ─── STYLES ─── */
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');
+:root{--bg:#0b0c10;--bg2:#111318;--bg3:#181b22;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);--accent:#4f8ef7;--accent2:#7c6af7;--accent3:#f74f8e;--success:#3ecf8e;--warning:#f5a623;--danger:#f74f4f;--text:#f0f2f8;--text2:#8b90a0;--text3:#555a6a;--radius:12px;--radius-sm:8px;--radius-lg:18px;--fd:'Syne',sans-serif;--fb:'DM Sans',sans-serif;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);font-size:14px;line-height:1.6;overflow:hidden;height:100vh;}
+.shell{display:flex;height:100vh;overflow:hidden;}
+.main{flex:1;overflow-y:auto;height:100vh;background:var(--bg);transition:margin-left 0.3s;}
+.pw{padding:28px 32px;max-width:1100px;margin:0 auto;animation:fadeUp 0.35s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.pt{font-family:var(--fd);font-size:26px;font-weight:700;letter-spacing:-0.5px;margin-bottom:3px;}
+.ps{font-size:12px;color:var(--text2);margin-bottom:24px;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 22px;}
+.csm{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:15px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+@media(max-width:900px){.g4{grid-template-columns:1fr 1fr;}.g3{grid-template-columns:1fr 1fr;}.g2{grid-template-columns:1fr;}}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-family:var(--fb);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all 0.18s;}
+.bp{background:var(--accent);color:#fff;box-shadow:0 0 18px rgba(79,142,247,0.22);}
+.bp:hover{background:#6aa0ff;transform:translateY(-1px);}
+.bg{background:transparent;color:var(--text2);border:1px solid var(--border2);}
+.bg:hover{background:var(--bg3);color:var(--text);}
+.bs{background:rgba(62,207,142,0.12);color:var(--success);border:1px solid rgba(62,207,142,0.28);}
+.inp,.ta,.sel{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-family:var(--fb);font-size:13px;padding:9px 13px;outline:none;transition:border-color 0.2s;}
+.inp:focus,.ta:focus,.sel:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,142,247,0.1);}
+.ta{resize:vertical;min-height:80px;line-height:1.6;}
+.sel{appearance:none;cursor:pointer;}
+.inp::placeholder,.ta::placeholder{color:var(--text3);}
+.lbl{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;display:block;}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;}
+.bb{background:rgba(79,142,247,0.14);color:var(--accent);}
+.bg2c{background:rgba(62,207,142,0.14);color:var(--success);}
+.br{background:rgba(247,79,79,0.14);color:var(--danger);}
+.bo{background:rgba(245,166,35,0.14);color:var(--warning);}
+.bpu{background:rgba(124,106,247,0.14);color:var(--accent2);}
+.bpk{background:rgba(247,79,142,0.14);color:var(--accent3);}
+.div{height:1px;background:var(--border);margin:16px 0;}
+.sc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;display:flex;flex-direction:column;gap:7px;position:relative;overflow:hidden;}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.sc.blue::before{background:linear-gradient(90deg,var(--accent),transparent);}
+.sc.purple::before{background:linear-gradient(90deg,var(--accent2),transparent);}
+.sc.green::before{background:linear-gradient(90deg,var(--success),transparent);}
+.sc.pink::before{background:linear-gradient(90deg,var(--accent3),transparent);}
+.sc.orange::before{background:linear-gradient(90deg,var(--warning),transparent);}
+.sv{font-family:var(--fd);font-size:24px;font-weight:700;color:var(--text);line-height:1;}
+.sl{font-size:12px;color:var(--text2);}
+.sch{font-size:11px;margin-top:3px;}
+.sch.up{color:var(--success);}.sch.dn{color:var(--danger);}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.st{font-family:var(--fd);font-size:14px;font-weight:600;color:var(--text);}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;padding:9px 13px;text-align:left;border-bottom:1px solid var(--border);}
+.tbl td{padding:11px 13px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--bg3);color:var(--text);}
+.tag{display:inline-flex;align-items:center;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:3px 9px;font-size:12px;color:var(--text2);gap:5px;}
+.tag button{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;line-height:1;padding:0;}
+.tag button:hover{color:var(--danger);}
+.pt-track{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.pt-fill{height:100%;border-radius:3px;transition:width 0.8s ease;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
+.ado{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;}
+.ado.done{background:rgba(62,207,142,0.14);color:var(--success);}
+.ado.active{background:rgba(79,142,247,0.14);color:var(--accent);animation:glow 1.5s infinite;}
+.ado.idle{background:var(--bg3);color:var(--text3);}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(79,142,247,0.3);}50%{box-shadow:0 0 0 5px rgba(79,142,247,0);}}
+.asp{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.asp:last-child{border-bottom:none;}
+.spin{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bounce{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-5px);opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+`;
+
+/* ─── DATA ─── */
+const employees = [
+  { id:1,name:"Priya Sharma",email:"priya@org.com",dept:"Engineering",role:"Senior Dev",av:"PS",color:"#4f8ef7"},
+  { id:2,name:"Rahul Verma",email:"rahul@org.com",dept:"Sales",role:"Sales Lead",av:"RV",color:"#7c6af7"},
+  { id:3,name:"Ananya Patel",email:"ananya@org.com",dept:"HR",role:"HR Manager",av:"AP",color:"#3ecf8e"},
+  { id:4,name:"Karan Singh",email:"karan@org.com",dept:"Engineering",role:"Dev",av:"KS",color:"#f74f8e"},
+  { id:5,name:"Meera Nair",email:"meera@org.com",dept:"Marketing",role:"Designer",av:"MN",color:"#f5a623"},
+  { id:6,name:"Arjun Das",email:"arjun@org.com",dept:"Finance",role:"Analyst",av:"AD",color:"#4f8ef7"},
+  { id:7,name:"Sneha Gupta",email:"sneha@org.com",dept:"Engineering",role:"Dev",av:"SG",color:"#7c6af7"},
+  { id:8,name:"Vikram Joshi",email:"vikram@org.com",dept:"Sales",role:"BDM",av:"VJ",color:"#3ecf8e"},
+];
+const depts=["All Departments","Engineering","Sales","HR","Marketing","Finance"];
+const tones=["Professional","Friendly","Urgent","Congratulatory","Formal","Casual"];
+const meetings=[
+  {id:1,title:"Sprint Planning",time:"Today, 3:00 PM",att:["PS","KS","SG"],dept:"Engineering",status:"upcoming"},
+  {id:2,title:"Sales Review",time:"Tomorrow, 11:00 AM",att:["RV","VJ"],dept:"Sales",status:"upcoming"},
+  {id:3,title:"All Hands",time:"Jun 5, 10:00 AM",att:["PS","RV","AP","KS"],dept:"All",status:"scheduled"},
+];
+const recentEmails=[
+  {id:1,subject:"Q2 Deadline Reminder",to:"All Developers (12)",sent:"2 min ago",opens:8},
+  {id:2,subject:"Monthly Payslip — May 2026",to:"All Employees (248)",sent:"1 hr ago",opens:201},
+  {id:3,subject:"Client Meeting Follow-up",to:"Sales Team (24)",sent:"3 hr ago",opens:19},
+  {id:4,subject:"Office Closure — June 12",to:"All Employees (248)",sent:"Yesterday",opens:230},
+];
+const agentStatus=[
+  {name:"Email Composer Agent",status:"done",desc:"Drafted 14 emails"},
+  {name:"Bulk Sender Agent",status:"active",desc:"Sending to 248 employees..."},
+  {name:"Calendar Scheduler Agent",status:"done",desc:"3 meetings booked"},
+  {name:"Follow-up Agent",status:"active",desc:"Monitoring 6 threads"},
+  {name:"HR Broadcast Agent",status:"done",desc:"Payslips distributed"},
+  {name:"Analytics Agent",status:"idle",desc:"Waiting for next trigger"},
+];
+const weekData=[42,78,55,91,63,88,72];
+const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const deptStats=[
+  {name:"Engineering",sent:412,opens:380,rate:92,color:"#4f8ef7"},
+  {name:"Sales",sent:284,opens:241,rate:85,color:"#7c6af7"},
+  {name:"HR",sent:248,opens:230,rate:93,color:"#3ecf8e"},
+  {name:"Marketing",sent:156,opens:124,rate:80,color:"#f74f8e"},
+  {name:"Finance",sent:98,opens:79,rate:81,color:"#f5a623"},
+];
+const insights=[
+  {icon:"📈",color:"#3ecf8e",title:"Email open rate up 6%",desc:"Engineering has highest engagement at 92%"},
+  {icon:"⚡",color:"#4f8ef7",title:"Best send time: 9–10 AM",desc:"Morning emails get 34% more opens than afternoon"},
+  {icon:"⚠️",color:"#f5a623",title:"Marketing needs attention",desc:"Open rate dropped — try shorter subject lines"},
+  {icon:"🎯",color:"#7c6af7",title:"Follow-ups boosted replies by 28%",desc:"Automated follow-up agent is working great"},
+];
+const agentSteps=["Understanding intent & context","Fetching target employees","Generating personalized emails","Checking tone & quality","Sending via Gmail API","Logging to analytics"];
+const hrTypes=["Announcement","Policy Update","Birthday Wish","Payslip","Leave Approval","Onboarding"];
+const chatSuggestions=["Send deadline reminder to all developers","How many emails sent this week?","Schedule a team meeting for tomorrow","Which dept has lowest open rate?","Generate monthly HR report"];
+
+/* ─── SIDEBAR ─── */
+const NAV=[
+  {id:"dashboard",icon:"⊞",label:"Dashboard"},
+  {id:"email",icon:"✉",label:"Email Agent"},
+  {id:"scheduler",icon:"◫",label:"Scheduler"},
+  {id:"hr",icon:"◈",label:"HR Comms"},
+  {id:"analytics",icon:"▦",label:"Analytics"},
+  {id:"chat",icon:"◉",label:"AI Chat"},
 ];
 
-const weeklyData = [
-  { week: "Week 1", spend: 12000 },
-  { week: "Week 2", spend: 18500 },
-  { week: "Week 3", spend: 9100 },
-  { week: "Week 4", spend: 26700 },
-];
-
-const recentReceipts = [
-  {
-    vendor: "Sharma Electronics",
-    date: "23 May 2026",
-    category: "Stock",
-    amount: "₹2,780",
-    gst: "₹430",
-  },
-  {
-    vendor: "Delhivery Courier",
-    date: "22 May 2026",
-    category: "Logistics",
-    amount: "₹1,450",
-    gst: "₹221",
-  },
-  {
-    vendor: "Office Rent",
-    date: "20 May 2026",
-    category: "Rent",
-    amount: "₹15,000",
-    gst: "₹0",
-  },
-];
-
-const insights = [
-  {
-    type: "Urgent",
-    title: "Stock expenses increased 34%",
-    desc: "Your stock purchase is rising quickly. Check whether sales are growing or you are over-purchasing.",
-    color: "border-red-400 bg-red-50",
-  },
-  {
-    type: "Opportunity",
-    title: "Buy LED bulbs in bulk",
-    desc: "You purchased LED bulbs 4 times this month. Bulk purchase can reduce cost by around 12–18%.",
-    color: "border-yellow-400 bg-yellow-50",
-  },
-  {
-    type: "Positive",
-    title: "Utility cost reduced",
-    desc: "Your electricity and internet expenses are 8% lower compared to last month.",
-    color: "border-green-400 bg-green-50",
-  },
-];
-
-function StatCard({ title, value, icon: Icon, sub }) {
-  return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      className="rounded-3xl bg-white p-5 shadow-sm border border-slate-100"
-    >
-      <div className="flex items-center justify-between">
-        <div className="h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
-          <Icon size={22} />
-        </div>
-        <span className="text-xs font-medium text-green-600">{sub}</span>
+function Sidebar({route,setRoute,collapsed,setCollapsed}){
+  return(
+    <aside style={{position:"fixed",left:0,top:0,bottom:0,width:collapsed?"64px":"230px",background:"#0d0f15",borderRight:"1px solid rgba(255,255,255,0.07)",display:"flex",flexDirection:"column",transition:"width 0.3s ease",zIndex:100,overflow:"hidden"}}>
+      <div style={{padding:collapsed?"18px 0":"18px 16px",borderBottom:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"space-between",gap:10}}>
+        {!collapsed&&<div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#4f8ef7,#7c6af7)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>⬡</div>
+          <div>
+            <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15,color:"#f0f2f8",letterSpacing:"-0.3px"}}>OrgPilot</div>
+            <div style={{fontSize:10,color:"#555a6a",letterSpacing:"1.5px",textTransform:"uppercase"}}>AI Agent</div>
+          </div>
+        </div>}
+        {collapsed&&<div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#4f8ef7,#7c6af7)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>⬡</div>}
+        {!collapsed&&<button onClick={()=>setCollapsed(true)} style={{background:"none",border:"none",cursor:"pointer",color:"#555a6a",fontSize:15,padding:4}}>←</button>}
       </div>
-      <h3 className="mt-5 text-sm text-slate-500">{title}</h3>
-      <p className="text-3xl font-bold text-slate-900">{value}</p>
-    </motion.div>
+      <nav style={{flex:1,padding:"10px 7px",display:"flex",flexDirection:"column",gap:2}}>
+        {NAV.map(n=>(
+          <button key={n.id} onClick={()=>setRoute(n.id)} style={{display:"flex",alignItems:"center",gap:collapsed?0:9,justifyContent:collapsed?"center":"flex-start",padding:collapsed?"10px":"9px 11px",borderRadius:"var(--radius-sm)",background:route===n.id?"rgba(79,142,247,0.12)":"transparent",border:route===n.id?"1px solid rgba(79,142,247,0.22)":"1px solid transparent",color:route===n.id?"#4f8ef7":"#8b90a0",fontFamily:"DM Sans,sans-serif",fontSize:13,fontWeight:route===n.id?500:400,cursor:"pointer",transition:"all 0.15s",whiteSpace:"nowrap",overflow:"hidden"}}>
+            <span style={{fontSize:15,flexShrink:0}}>{n.icon}</span>
+            {!collapsed&&n.label}
+          </button>
+        ))}
+      </nav>
+      <div style={{padding:collapsed?"14px 7px":"14px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+        {!collapsed?<div style={{display:"flex",alignItems:"center",gap:9}}>
+          <div className="av" style={{background:"rgba(79,142,247,0.14)",color:"#4f8ef7"}}>A</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,fontWeight:500,color:"#f0f2f8"}}>Admin</div>
+            <div style={{fontSize:11,color:"#555a6a"}}>admin@org.com</div>
+          </div>
+          <div style={{width:7,height:7,borderRadius:"50%",background:"#3ecf8e",boxShadow:"0 0 5px #3ecf8e"}}/>
+        </div>:<div style={{display:"flex",justifyContent:"center"}}><div className="av" style={{background:"rgba(79,142,247,0.14)",color:"#4f8ef7"}}>A</div></div>}
+        {!collapsed&&<button onClick={()=>setCollapsed(true)} style={{width:"100%",marginTop:9,padding:"5px",background:"none",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"var(--radius-sm)",color:"#555a6a",fontSize:11,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}}>Collapse</button>}
+        {collapsed&&<button onClick={()=>setCollapsed(false)} style={{width:"100%",marginTop:9,padding:"5px",background:"none",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"var(--radius-sm)",color:"#555a6a",fontSize:11,cursor:"pointer",fontFamily:"DM Sans,sans-serif"}}>→</button>}
+      </div>
+    </aside>
   );
 }
 
-export default function App() {
-  const [question, setQuestion] = useState("");
-
-  return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <aside className="fixed hidden lg:flex h-screen w-72 flex-col bg-slate-950 text-white p-6">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-emerald-400 flex items-center justify-center text-slate-950">
-            <Receipt />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">ReceiptBrain</h1>
-            <p className="text-xs text-slate-400">AI Business Copilot</p>
-          </div>
+/* ─── DASHBOARD ─── */
+function Dashboard({setRoute}){
+  const stats=[
+    {label:"Emails Sent Today",value:"1,284",change:"+18% vs yesterday",dir:"up",color:"blue",icon:"✉"},
+    {label:"Active Agents",value:"8",change:"All running",dir:"up",color:"purple",icon:"⬡"},
+    {label:"Meetings Scheduled",value:"24",change:"+3 this week",dir:"up",color:"green",icon:"◫"},
+    {label:"Avg Open Rate",value:"84%",change:"+6% vs last month",dir:"up",color:"pink",icon:"◉"},
+  ];
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24}}>
+        <div>
+          <div className="pt">Good morning, Admin 👋</div>
+          <div className="ps">Here's what OrgPilot has been doing for your organization today</div>
         </div>
-
-        <nav className="mt-10 space-y-3">
-          {[
-            ["Dashboard", BarChart3],
-            ["Upload Receipt", Upload],
-            ["GST Reports", FileText],
-            ["AI Insights", Sparkles],
-            ["Ask AI", MessageCircle],
-          ].map(([item, Icon]) => (
-            <button
-              key={item}
-              className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-slate-300 hover:bg-white/10 hover:text-white"
-            >
-              <Icon size={18} />
-              {item}
-            </button>
-          ))}
-        </nav>
-
-        <div className="mt-auto rounded-3xl bg-white/10 p-4">
-          <p className="text-sm font-semibold">Agent Status</p>
-          <p className="mt-1 text-xs text-slate-400">
-            OCR, GST, RAG, BI and anomaly agents active.
-          </p>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn bg" onClick={()=>setRoute("analytics")}>View Report</button>
+          <button className="btn bp" onClick={()=>setRoute("email")}>+ New Email</button>
         </div>
-      </aside>
-
-      <main className="lg:ml-72 p-5 md:p-8">
-        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold text-emerald-600">
-              Small Business AI Dashboard
-            </p>
-            <h2 className="text-3xl md:text-4xl font-bold">
-              Welcome back, Prankit
-            </h2>
-            <p className="text-slate-500 mt-1">
-              Track receipts, GST, expenses and business growth insights.
-            </p>
+      </div>
+      <div className="g4" style={{marginBottom:18}}>
+        {stats.map(s=>(
+          <div key={s.label} className={`sc ${s.color}`}>
+            <div style={{fontSize:22}}>{s.icon}</div>
+            <div className="sv">{s.value}</div>
+            <div className="sl">{s.label}</div>
+            <div className={`sch ${s.dir==="up"?"up":"dn"}`}>↑ {s.change}</div>
           </div>
-
-          <button className="rounded-2xl bg-slate-950 text-white px-5 py-3 flex items-center gap-2 shadow">
-            <Download size={18} />
-            Generate Monthly Report
-          </button>
-        </header>
-
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mt-8">
-          <StatCard title="Total Spent" value="₹76,000" icon={IndianRupee} sub="+12%" />
-          <StatCard title="GST Claimable" value="₹8,430" icon={ShieldCheck} sub="May 2026" />
-          <StatCard title="Receipts" value="38" icon={Receipt} sub="+9 new" />
-          <StatCard title="Predicted Expense" value="₹84,500" icon={TrendingUp} sub="Next month" />
-        </section>
-
-        <section className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
-          <div className="xl:col-span-2 rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="text-xl font-bold">Weekly Spending</h3>
-                <p className="text-sm text-slate-500">Expense trend by week</p>
+        ))}
+      </div>
+      <div className="g2" style={{marginBottom:18}}>
+        <div className="card">
+          <div className="sh"><div className="st">🤖 Live Agent Status</div><span className="badge bg2c">8 Online</span></div>
+          {agentStatus.map(a=>(
+            <div key={a.name} className="asp">
+              <div className={`ado ${a.status}`}>{a.status==="done"?"✓":a.status==="active"?"●":"○"}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:500,color:"var(--text)"}}>{a.name}</div>
+                <div style={{fontSize:11,color:"var(--text2)",marginTop:2}}>{a.desc}</div>
               </div>
-              <AlertTriangle className="text-yellow-500" />
+              <span className={`badge ${a.status==="done"?"bg2c":a.status==="active"?"bb":"bo"}`}>{a.status}</span>
             </div>
-
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyData}>
-                  <XAxis dataKey="week" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="spend" radius={[12, 12, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-            <h3 className="text-xl font-bold">Category Split</h3>
-            <p className="text-sm text-slate-500">Where money is going</p>
-
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={categoryData} dataKey="value" nameKey="name" outerRadius={95}>
-                    {categoryData.map((_, index) => (
-                      <Cell key={index} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-8">
-          <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-            <h3 className="text-xl font-bold">Upload Receipt</h3>
-            <p className="text-sm text-slate-500">
-              Upload image or PDF. AI agents will extract, categorize and store it.
-            </p>
-
-            <div className="mt-5 border-2 border-dashed border-slate-300 rounded-3xl p-10 text-center bg-slate-50">
-              <Upload className="mx-auto mb-4 text-slate-500" size={40} />
-              <p className="font-semibold">Drop receipt here</p>
-              <p className="text-sm text-slate-500 mt-1">PNG, JPG or PDF supported</p>
-              <button className="mt-5 rounded-2xl bg-emerald-500 px-5 py-3 font-semibold text-white">
-                Choose File
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5 text-sm">
-              {["OCR Agent", "Parser Agent", "GST Agent", "RAG Agent"].map((agent) => (
-                <div key={agent} className="rounded-2xl bg-emerald-50 p-3 text-emerald-700 font-medium">
-                  {agent}
+          ))}
+        </div>
+        <div className="card">
+          <div className="sh"><div className="st">📅 Upcoming Meetings</div><button className="btn bg" style={{fontSize:11,padding:"4px 9px"}}>View all</button></div>
+          <div style={{display:"flex",flexDirection:"column",gap:9}}>
+            {meetings.map(m=>(
+              <div key={m.id} className="csm" style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:38,height:38,borderRadius:8,background:"rgba(79,142,247,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>◫</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:500,color:"var(--text)"}}>{m.title}</div>
+                  <div style={{fontSize:11,color:"var(--text2)"}}>{m.time} · {m.dept}</div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-            <h3 className="text-xl font-bold">Recent Receipts</h3>
-            <p className="text-sm text-slate-500">Latest uploaded transactions</p>
-
-            <div className="mt-5 space-y-4">
-              {recentReceipts.map((r) => (
-                <div key={r.vendor} className="rounded-2xl border border-slate-100 p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-bold">{r.vendor}</p>
-                    <p className="text-sm text-slate-500">{r.date}</p>
-                    <span className="inline-block mt-2 rounded-full bg-slate-100 px-3 py-1 text-xs">
-                      {r.category}
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-lg">{r.amount}</p>
-                    <p className="text-sm text-green-600">GST {r.gst}</p>
-                  </div>
+                <div style={{display:"flex"}}>
+                  {m.att.slice(0,3).map((a,i)=>(
+                    <div key={i} className="av" style={{background:"rgba(79,142,247,0.14)",color:"#4f8ef7",fontSize:10,width:24,height:24,marginLeft:i>0?-5:0,border:"2px solid var(--bg2)"}}>{a}</div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-8 rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-3">
-            <Sparkles className="text-emerald-500" />
-            <div>
-              <h3 className="text-xl font-bold">AI Business Intelligence</h3>
-              <p className="text-sm text-slate-500">
-                Suggestions to reduce cost and improve business growth
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-5">
-            {insights.map((item) => (
-              <div key={item.title} className={`rounded-3xl border-l-4 p-5 ${item.color}`}>
-                <p className="text-xs font-bold uppercase">{item.type}</p>
-                <h4 className="font-bold mt-2">{item.title}</h4>
-                <p className="text-sm text-slate-600 mt-2">{item.desc}</p>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </div>
+      <div className="card">
+        <div className="sh"><div className="st">✉ Recent Emails</div><button className="btn bg" style={{fontSize:11,padding:"4px 9px"}}>View all</button></div>
+        <table className="tbl">
+          <thead><tr><th>Subject</th><th>Recipients</th><th>Sent</th><th>Opens</th><th>Status</th></tr></thead>
+          <tbody>
+            {recentEmails.map(e=>(
+              <tr key={e.id}>
+                <td style={{color:"var(--text)",fontWeight:500}}>{e.subject}</td>
+                <td>{e.to}</td><td>{e.sent}</td>
+                <td><span style={{color:"var(--success)"}}>{e.opens}</span></td>
+                <td><span className="badge bg2c">✓ sent</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
-        <section className="mt-8 rounded-3xl bg-slate-950 text-white p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Bot className="text-emerald-400" />
-            <div>
-              <h3 className="text-xl font-bold">Ask ReceiptBrain AI</h3>
-              <p className="text-sm text-slate-400">
-                RAG chatbot answers from your MongoDB + FAISS receipt data.
-              </p>
+/* ─── EMAIL AGENT ─── */
+function EmailAgent(){
+  const [topic,setTopic]=useState("");
+  const [dept,setDept]=useState("All Departments");
+  const [tone,setTone]=useState("Professional");
+  const [extra,setExtra]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [activeStep,setActiveStep]=useState(-1);
+  const [doneSteps,setDoneSteps]=useState([]);
+  const [email,setEmail]=useState(null);
+  const [sent,setSent]=useState(false);
+  const [tags,setTags]=useState([]);
+  const [tagIn,setTagIn]=useState("");
+
+  const filtered=dept==="All Departments"?employees:employees.filter(e=>e.dept===dept);
+
+  const addTag=e=>{if(e.key==="Enter"&&tagIn.trim()){setTags([...tags,tagIn.trim()]);setTagIn("");}};
+  const removeTag=i=>setTags(tags.filter((_,idx)=>idx!==i));
+
+  const generate=async()=>{
+    if(!topic.trim())return;
+    setLoading(true);setSent(false);setEmail(null);setDoneSteps([]);
+    for(let i=0;i<agentSteps.length;i++){setActiveStep(i);await new Promise(r=>setTimeout(r,650));setDoneSteps(p=>[...p,i]);}
+    setActiveStep(-1);
+    try{
+      const recips=filtered.map(e=>`${e.name} (${e.role}, ${e.dept})`).join(", ");
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:`You are OrgPilot, an AI email agent.\n\nGenerate an organizational email:\n- Topic: ${topic}\n- Department: ${dept}\n- Recipients: ${recips}\n- Tone: ${tone}\n- Context: ${extra||"None"}\n- Tags: ${tags.join(", ")||"None"}\n\nRespond ONLY with valid JSON, no markdown:\n{"subject":"...","body":"...","recipient_count":${filtered.length},"estimated_open_rate":"XX%"}`}]})});
+      const data=await res.json();
+      const text=data.content?.map(c=>c.text||"").join("")||"{}";
+      setEmail(JSON.parse(text.replace(/```json|```/g,"").trim()));
+    }catch{
+      setEmail({subject:`${topic} — Update`,body:`Dear Team,\n\nThis is regarding ${topic}. Please review and act accordingly.\n\nBest,\nOrgPilot AI`,recipient_count:filtered.length,estimated_open_rate:"82%"});
+    }
+    setLoading(false);
+  };
+
+  const sendEmail=async()=>{setLoading(true);await new Promise(r=>setTimeout(r,1200));setSent(true);setLoading(false);};
+
+  return(
+    <div>
+      <div className="pt">✉ Email Agent</div>
+      <div className="ps">AI drafts and sends personalized emails to your organization instantly</div>
+      <div className="g2">
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div className="card">
+            <div className="st" style={{marginBottom:14}}>📝 Compose with AI</div>
+            <div className="fg"><label className="lbl">Email Topic / Instruction</label><textarea className="ta" placeholder="e.g. Send project deadline reminder to all developers. Deadline is Friday 6 PM." value={topic} onChange={e=>setTopic(e.target.value)} style={{minHeight:80}}/></div>
+            <div className="g2">
+              <div className="fg"><label className="lbl">Department</label><select className="sel" value={dept} onChange={e=>setDept(e.target.value)}>{depts.map(d=><option key={d}>{d}</option>)}</select></div>
+              <div className="fg"><label className="lbl">Tone</label><select className="sel" value={tone} onChange={e=>setTone(e.target.value)}>{tones.map(t=><option key={t}>{t}</option>)}</select></div>
             </div>
-          </div>
-
-          <div className="mt-5 bg-white/10 rounded-3xl p-5">
-            <p className="text-sm text-slate-300">Example AI Answer</p>
-            <p className="mt-2">
-              “You spent ₹42,000 on stock this month. Your highest stock vendor is
-              Sharma Electronics. Buying LED bulbs in bulk can reduce cost.”
-            </p>
-          </div>
-
-          <div className="mt-5 flex flex-col md:flex-row gap-3">
-            <input
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Ask: How much did I spend on stock this month?"
-              className="flex-1 rounded-2xl px-5 py-4 text-slate-900 outline-none"
-            />
-            <button className="rounded-2xl bg-emerald-500 px-6 py-4 font-bold flex items-center justify-center gap-2">
-              <Search size={18} />
-              Ask AI
+            <div className="fg"><label className="lbl">Additional Context</label><input className="inp" placeholder="e.g. Include dashboard link, mention project XYZ" value={extra} onChange={e=>setExtra(e.target.value)}/></div>
+            <div className="fg">
+              <label className="lbl">Tags</label>
+              <input className="inp" placeholder="Type and press Enter" value={tagIn} onChange={e=>setTagIn(e.target.value)} onKeyDown={addTag}/>
+              {tags.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:5}}>{tags.map((t,i)=><div key={i} className="tag">{t}<button onClick={()=>removeTag(i)}>×</button></div>)}</div>}
+            </div>
+            <button className="btn bp" onClick={generate} disabled={loading||!topic.trim()} style={{width:"100%",justifyContent:"center",opacity:!topic.trim()?0.5:1}}>
+              {loading?<><div className="spin"/>Generating...</>:"⚡ Generate with AI"}
             </button>
           </div>
-        </section>
-      </main>
+          <div className="card">
+            <div className="sh"><div className="st">👥 Recipients</div><span className="badge bb">{filtered.length} employees</span></div>
+            <div style={{display:"flex",flexDirection:"column",gap:7,maxHeight:180,overflowY:"auto"}}>
+              {filtered.map(e=>(
+                <div key={e.id} style={{display:"flex",alignItems:"center",gap:9}}>
+                  <div className="av" style={{background:e.color+"22",color:e.color,fontSize:10}}>{e.av}</div>
+                  <div style={{flex:1}}><div style={{fontSize:12,fontWeight:500,color:"var(--text)"}}>{e.name}</div><div style={{fontSize:11,color:"var(--text3)"}}>{e.email}</div></div>
+                  <span className="badge bpu" style={{fontSize:10}}>{e.dept}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div className="card">
+            <div className="st" style={{marginBottom:12}}>🤖 Agent Pipeline</div>
+            {agentSteps.map((step,i)=>(
+              <div key={i} className="asp">
+                <div className={`ado ${doneSteps.includes(i)?"done":activeStep===i?"active":"idle"}`}>{doneSteps.includes(i)?"✓":activeStep===i?"●":i+1}</div>
+                <div style={{fontSize:13,color:doneSteps.includes(i)?"var(--text)":"var(--text2)"}}>{step}</div>
+              </div>
+            ))}
+          </div>
+          {email&&(
+            <div className="card">
+              <div className="sh">
+                <div className="st">📧 Generated Email</div>
+                <div style={{display:"flex",gap:5}}><span className="badge bb">{email.recipient_count} recipients</span><span className="badge bg2c">{email.estimated_open_rate}</span></div>
+              </div>
+              <div style={{background:"var(--bg3)",borderRadius:"var(--radius-sm)",padding:14,marginBottom:12}}>
+                <div style={{fontSize:11,color:"var(--text3)",marginBottom:3}}>SUBJECT</div>
+                <div style={{fontSize:14,fontWeight:600,color:"var(--text)",marginBottom:10}}>{email.subject}</div>
+                <div className="div" style={{margin:"10px 0"}}/>
+                <div style={{fontSize:13,color:"var(--text2)",lineHeight:1.8,whiteSpace:"pre-line"}}>{email.body}</div>
+              </div>
+              {sent?(
+                <div style={{background:"rgba(62,207,142,0.1)",border:"1px solid rgba(62,207,142,0.22)",borderRadius:"var(--radius-sm)",padding:"11px",color:"var(--success)",fontSize:13,textAlign:"center"}}>
+                  ✓ Email sent to {email.recipient_count} employees!
+                </div>
+              ):(
+                <div style={{display:"flex",gap:8}}>
+                  <button className="btn bg" style={{flex:1,justifyContent:"center"}}>✎ Edit</button>
+                  <button className="btn bp" style={{flex:2,justifyContent:"center"}} onClick={sendEmail} disabled={loading}>
+                    {loading?<><div className="spin"/>Sending...</>:`🚀 Send to ${email.recipient_count}`}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+/* ─── SCHEDULER ─── */
+function Scheduler(){
+  const [title,setTitle]=useState("");
+  const [date,setDate]=useState("");
+  const [time,setTime]=useState("");
+  const [selEmps,setSelEmps]=useState([]);
+  const [context,setContext]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [agenda,setAgenda]=useState("");
+  const [scheduled,setScheduled]=useState(false);
+
+  const toggleEmp=id=>setSelEmps(p=>p.includes(id)?p.filter(e=>e!==id):[...p,id]);
+
+  const genAgenda=async()=>{
+    if(!title.trim())return;setLoading(true);
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,messages:[{role:"user",content:`Generate a concise meeting agenda for "${title}". Context: ${context||"Team meeting"}. Plain text, numbered items, max 5 items. Start with "1."`}]})});
+      const data=await res.json();
+      setAgenda(data.content?.map(c=>c.text||"").join("")||"");
+    }catch{setAgenda("1. Welcome & attendance\n2. Review action items\n3. Main discussion\n4. Q&A\n5. Next steps");}
+    setLoading(false);
+  };
+
+  const schedule=async()=>{setLoading(true);await new Promise(r=>setTimeout(r,1100));setScheduled(true);setLoading(false);};
+
+  return(
+    <div>
+      <div className="pt">◫ Meeting Scheduler</div>
+      <div className="ps">AI finds best time slots and sends calendar invites to all attendees automatically</div>
+      <div className="g2">
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div className="card">
+            <div className="st" style={{marginBottom:14}}>📅 Schedule a Meeting</div>
+            <div className="fg"><label className="lbl">Meeting Title</label><input className="inp" placeholder="e.g. Sprint Planning, Client Review..." value={title} onChange={e=>setTitle(e.target.value)}/></div>
+            <div className="g2">
+              <div className="fg"><label className="lbl">Date</label><input className="inp" type="date" value={date} onChange={e=>setDate(e.target.value)}/></div>
+              <div className="fg"><label className="lbl">Time</label><input className="inp" type="time" value={time} onChange={e=>setTime(e.target.value)}/></div>
+            </div>
+            <div className="fg"><label className="lbl">Meeting Context</label><textarea className="ta" placeholder="What will be discussed?" value={context} onChange={e=>setContext(e.target.value)} style={{minHeight:65}}/></div>
+            <button className="btn bg" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={genAgenda} disabled={loading||!title.trim()}>
+              {loading?<><div className="spin"/>Generating agenda...</>:"✨ AI Generate Agenda"}
+            </button>
+            {agenda&&<div style={{background:"var(--bg3)",borderRadius:"var(--radius-sm)",padding:12,marginBottom:10}}>
+              <div style={{fontSize:11,color:"var(--accent)",marginBottom:7,letterSpacing:"1px"}}>AI GENERATED AGENDA</div>
+              <div style={{fontSize:13,color:"var(--text2)",lineHeight:1.8,whiteSpace:"pre-line"}}>{agenda}</div>
+            </div>}
+            {scheduled?<div style={{background:"rgba(62,207,142,0.1)",border:"1px solid rgba(62,207,142,0.22)",borderRadius:"var(--radius-sm)",padding:"11px",color:"var(--success)",fontSize:13,textAlign:"center"}}>✓ Meeting scheduled! Invites sent to {selEmps.length||"all"} attendees.</div>
+            :<button className="btn bp" style={{width:"100%",justifyContent:"center"}} onClick={schedule} disabled={loading||!title.trim()}>🗓 Schedule & Send Invites</button>}
+          </div>
+          <div className="card">
+            <div className="st" style={{marginBottom:12}}>Upcoming Meetings</div>
+            {meetings.map(m=>(
+              <div key={m.id} className="csm" style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                <div style={{width:36,height:36,borderRadius:8,background:"rgba(79,142,247,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>◫</div>
+                <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500,color:"var(--text)"}}>{m.title}</div><div style={{fontSize:11,color:"var(--text2)"}}>{m.time}</div></div>
+                <span className={`badge ${m.status==="upcoming"?"bg2c":"bb"}`}>{m.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card">
+          <div className="sh"><div className="st">👥 Select Attendees</div><span className="badge bb">{selEmps.length} selected</span></div>
+          <div style={{display:"flex",flexDirection:"column",gap:7}}>
+            {employees.map(e=>{
+              const sel=selEmps.includes(e.id);
+              return(
+                <div key={e.id} onClick={()=>toggleEmp(e.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 11px",borderRadius:"var(--radius-sm)",background:sel?"rgba(79,142,247,0.08)":"var(--bg3)",border:sel?"1px solid rgba(79,142,247,0.25)":"1px solid var(--border)",cursor:"pointer",transition:"all 0.14s"}}>
+                  <div className="av" style={{background:e.color+"22",color:e.color,fontSize:10}}>{e.av}</div>
+                  <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500,color:"var(--text)"}}>{e.name}</div><div style={{fontSize:11,color:"var(--text3)"}}>{e.role} · {e.dept}</div></div>
+                  <div style={{width:17,height:17,borderRadius:4,background:sel?"var(--accent)":"transparent",border:sel?"none":"1px solid var(--border2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#fff",flexShrink:0}}>{sel?"✓":""}</div>
+                </div>
+              );
+            })}
+          </div>
+          <button className="btn bg" style={{width:"100%",justifyContent:"center",marginTop:10}} onClick={()=>setSelEmps(selEmps.length===employees.length?[]:employees.map(e=>e.id))}>
+            {selEmps.length===employees.length?"Deselect all":"Select all"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── HR COMMS ─── */
+function HRComms(){
+  const [type,setType]=useState("Announcement");
+  const [content,setContent]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [generated,setGenerated]=useState("");
+  const [sent,setSent]=useState(false);
+  const announcements=[
+    {id:1,title:"New WFH Policy",type:"Policy",date:"May 24",reach:248,reads:210},
+    {id:2,title:"Q2 Performance Bonuses",type:"HR",date:"May 20",reach:248,reads:245},
+    {id:3,title:"Office Renovation Update",type:"Facility",date:"May 18",reach:248,reads:189},
+  ];
+  const quickActions=[
+    {label:"Send monthly payslips to all",icon:"📊"},
+    {label:"Broadcast office holiday notice",icon:"🏖"},
+    {label:"Send onboarding kit to new joiners",icon:"👋"},
+    {label:"Remind pending leave approvals",icon:"📋"},
+  ];
+
+  const generate=async()=>{
+    if(!content.trim())return;setLoading(true);setSent(false);
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,messages:[{role:"user",content:`You are OrgPilot HR Agent. Generate a ${type} message.\nTopic: ${content}\nWrite professionally in 3-4 sentences. No subject. Sign as "OrgPilot HR Agent".`}]})});
+      const data=await res.json();
+      setGenerated(data.content?.map(c=>c.text||"").join("")||"");
+    }catch{setGenerated(`Dear Team,\n\nWe have an important ${type.toLowerCase()} regarding ${content}. Please review and take note. For queries, contact HR.\n\nBest,\nOrgPilot HR Agent`);}
+    setLoading(false);
+  };
+
+  const send=async()=>{setLoading(true);await new Promise(r=>setTimeout(r,900));setSent(true);setLoading(false);};
+
+  return(
+    <div>
+      <div className="pt">◈ HR Communications</div>
+      <div className="ps">Automate all HR announcements, payslips, onboarding, and employee communications</div>
+      <div className="g2" style={{marginBottom:16}}>
+        <div className="card">
+          <div className="st" style={{marginBottom:14}}>📢 New HR Communication</div>
+          <div className="fg">
+            <label className="lbl">Type</label>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {hrTypes.map(t=><button key={t} onClick={()=>setType(t)} style={{padding:"5px 11px",borderRadius:20,fontSize:12,cursor:"pointer",fontFamily:"DM Sans,sans-serif",background:type===t?"rgba(79,142,247,0.14)":"var(--bg3)",border:type===t?"1px solid rgba(79,142,247,0.35)":"1px solid var(--border)",color:type===t?"var(--accent)":"var(--text2)",transition:"all 0.14s"}}>{t}</button>)}
+            </div>
+          </div>
+          <div className="fg"><label className="lbl">Message Details</label><textarea className="ta" placeholder={type==="Birthday Wish"?"Employee name and department...":type==="Payslip"?"Month, salary details...":"Describe the announcement..."} value={content} onChange={e=>setContent(e.target.value)}/></div>
+          <button className="btn bp" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={generate} disabled={loading||!content.trim()}>
+            {loading?<><div className="spin"/>Generating...</>:"✨ Generate HR Message"}
+          </button>
+          {generated&&<div>
+            <div style={{background:"var(--bg3)",borderRadius:"var(--radius-sm)",padding:14,marginBottom:10}}>
+              <div style={{fontSize:11,color:"var(--accent)",marginBottom:7,letterSpacing:"1px"}}>AI GENERATED MESSAGE</div>
+              <div style={{fontSize:13,color:"var(--text2)",lineHeight:1.8,whiteSpace:"pre-line"}}>{generated}</div>
+            </div>
+            {sent?<div style={{background:"rgba(62,207,142,0.1)",border:"1px solid rgba(62,207,142,0.22)",borderRadius:"var(--radius-sm)",padding:"11px",color:"var(--success)",fontSize:13,textAlign:"center"}}>✓ Sent to all employees!</div>
+            :<button className="btn bs" style={{width:"100%",justifyContent:"center"}} onClick={send} disabled={loading}>📤 Send to All Employees</button>}
+          </div>}
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div className="card">
+            <div className="sh"><div className="st">🎂 Birthdays Today</div><span className="badge bpk">Auto-sending</span></div>
+            {employees.slice(0,2).map(e=>(
+              <div key={e.id} style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}>
+                <div className="av" style={{background:e.color+"22",color:e.color}}>{e.av}</div>
+                <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500,color:"var(--text)"}}>{e.name}</div><div style={{fontSize:11,color:"var(--text3)"}}>{e.dept}</div></div>
+                <span className="badge bg2c">✓ Wish sent</span>
+              </div>
+            ))}
+          </div>
+          <div className="card">
+            <div className="st" style={{marginBottom:12}}>📋 Recent Announcements</div>
+            {announcements.map(a=>(
+              <div key={a.id} className="csm" style={{marginBottom:9}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+                  <div style={{fontSize:13,fontWeight:500,color:"var(--text)"}}>{a.title}</div>
+                  <span className="badge bb">{a.type}</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{fontSize:11,color:"var(--text3)"}}>{a.date} · {a.reach} recipients</div>
+                  <div style={{fontSize:11,color:"var(--success)"}}>{a.reads} reads</div>
+                </div>
+                <div className="pt-track" style={{marginTop:7}}><div className="pt-fill" style={{width:`${(a.reads/a.reach)*100}%`,background:"linear-gradient(90deg,var(--success),var(--accent))"}}/></div>
+              </div>
+            ))}
+          </div>
+          <div className="card">
+            <div className="st" style={{marginBottom:12}}>⚡ Quick Actions</div>
+            {quickActions.map(a=><button key={a.label} className="btn bg" style={{justifyContent:"flex-start",gap:9,width:"100%",marginBottom:6}} onClick={()=>{setType("Announcement");setContent(a.label);}}><span>{a.icon}</span>{a.label}</button>)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── ANALYTICS ─── */
+function Analytics(){
+  const maxW=Math.max(...weekData);
+  return(
+    <div>
+      <div className="pt">▦ Analytics</div>
+      <div className="ps">Deep insights into your organization's communication performance</div>
+      <div className="g4" style={{marginBottom:18}}>
+        {[
+          {label:"Total Emails Sent",value:"12,840",change:"+18%",color:"blue"},
+          {label:"Avg Open Rate",value:"84%",change:"+6%",color:"green"},
+          {label:"Meetings Held",value:"94",change:"+12%",color:"purple"},
+          {label:"Response Rate",value:"67%",change:"+28%",color:"pink"},
+        ].map(s=>(
+          <div key={s.label} className={`sc ${s.color}`}>
+            <div className="sv">{s.value}</div>
+            <div className="sl">{s.label}</div>
+            <div className="sch up">↑ {s.change} this month</div>
+          </div>
+        ))}
+      </div>
+      <div className="g2" style={{marginBottom:18}}>
+        <div className="card">
+          <div className="st" style={{marginBottom:14}}>📈 Emails Sent — This Week</div>
+          <div style={{display:"flex",alignItems:"flex-end",gap:7,height:110,marginBottom:7}}>
+            {weekData.map((v,i)=>(
+              <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+                <div style={{fontSize:10,color:"var(--text2)"}}>{v}</div>
+                <div style={{width:"100%",height:`${(v/maxW)*90}px`,background:i===3?"linear-gradient(180deg,#4f8ef7,#7c6af7)":"rgba(79,142,247,0.28)",borderRadius:"4px 4px 0 0",transition:"height 0.5s ease"}}/>
+                <div style={{fontSize:10,color:"var(--text3)"}}>{days[i]}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:16,marginTop:5}}>
+            <div style={{fontSize:12,color:"var(--text2)"}}>Peak: <span style={{color:"var(--accent)"}}>Thursday (91)</span></div>
+            <div style={{fontSize:12,color:"var(--text2)"}}>Total: <span style={{color:"var(--text)"}}>489 this week</span></div>
+          </div>
+        </div>
+        <div className="card">
+          <div className="st" style={{marginBottom:12}}>🤖 AI Business Insights</div>
+          {insights.map((ins,i)=>(
+            <div key={i} className="csm" style={{display:"flex",gap:11,alignItems:"flex-start",marginBottom:9}}>
+              <div style={{width:30,height:30,borderRadius:7,flexShrink:0,background:ins.color+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>{ins.icon}</div>
+              <div>
+                <div style={{fontSize:13,fontWeight:500,color:"var(--text)",marginBottom:2}}>{ins.title}</div>
+                <div style={{fontSize:11,color:"var(--text2)",lineHeight:1.5}}>{ins.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="card">
+        <div className="st" style={{marginBottom:14}}>🏢 Department Performance</div>
+        <table className="tbl">
+          <thead><tr><th>Department</th><th>Sent</th><th>Opens</th><th>Open Rate</th><th>Performance</th></tr></thead>
+          <tbody>
+            {deptStats.map(d=>(
+              <tr key={d.name}>
+                <td><div style={{display:"flex",alignItems:"center",gap:7}}><div style={{width:8,height:8,borderRadius:2,background:d.color}}/><span style={{color:"var(--text)",fontWeight:500}}>{d.name}</span></div></td>
+                <td>{d.sent}</td><td>{d.opens}</td>
+                <td><span style={{color:d.rate>=90?"var(--success)":d.rate>=85?"var(--accent)":"var(--warning)"}}>{d.rate}%</span></td>
+                <td style={{minWidth:120}}><div className="pt-track"><div className="pt-fill" style={{width:`${d.rate}%`,background:d.color}}/></div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ─── AI CHAT ─── */
+const SYSTEM=`You are OrgPilot, an intelligent AI communication agent for organizations. Help managers:
+- Draft and send bulk emails to employees
+- Schedule meetings and calendar invites
+- Handle HR communications (announcements, payslips, etc.)
+- Analyze communication analytics
+- Provide business intelligence
+
+Org data: 248 employees, Departments: Engineering(45), Sales(38), HR(12), Marketing(28), Finance(18). This month: 12,840 emails sent, 84% avg open rate, 94 meetings scheduled. Engineering top performer (92%). Marketing needs attention (80% open rate).
+
+Be conversational, specific, actionable. Keep responses concise.`;
+
+function AIChat(){
+  const [messages,setMessages]=useState([{role:"assistant",content:"Hey! 👋 I'm OrgPilot AI. I can help you send bulk emails, schedule meetings, broadcast HR announcements, and analyze your communication data. What would you like to do?"}]);
+  const [input,setInput]=useState("");
+  const [loading,setLoading]=useState(false);
+  const endRef=useRef(null);
+
+  useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"});},[messages,loading]);
+
+  const send=async(text)=>{
+    const msg=text||input.trim();
+    if(!msg||loading)return;
+    setInput("");
+    const updated=[...messages,{role:"user",content:msg}];
+    setMessages(updated);setLoading(true);
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:800,system:SYSTEM,messages:updated.map(m=>({role:m.role,content:m.content}))})});
+      const data=await res.json();
+      const reply=data.content?.map(c=>c.text||"").join("")||"I'm here to help!";
+      setMessages(p=>[...p,{role:"assistant",content:reply}]);
+    }catch{setMessages(p=>[...p,{role:"assistant",content:"Sorry, connectivity issue. Please try again!"}]);}
+    setLoading(false);
+  };
+
+  return(
+    <div>
+      <div className="pt">◉ AI Chat</div>
+      <div className="ps">Talk to OrgPilot in plain English — it handles everything automatically</div>
+      <div className="g2">
+        <div className="card" style={{display:"flex",flexDirection:"column",height:"68vh"}}>
+          <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:13,paddingBottom:8}}>
+            {messages.map((m,i)=>(
+              <div key={i} style={{display:"flex",flexDirection:m.role==="user"?"row-reverse":"row",gap:9,alignItems:"flex-start"}}>
+                {m.role==="assistant"&&<div style={{width:30,height:30,borderRadius:8,flexShrink:0,background:"linear-gradient(135deg,#4f8ef7,#7c6af7)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>⬡</div>}
+                <div style={{maxWidth:"78%",padding:"11px 15px",borderRadius:m.role==="user"?"15px 15px 4px 15px":"15px 15px 15px 4px",background:m.role==="user"?"linear-gradient(135deg,#4f8ef7,#4f46e5)":"var(--bg3)",border:m.role==="assistant"?"1px solid var(--border)":"none",fontSize:13,lineHeight:1.75,color:"var(--text)",boxShadow:m.role==="user"?"0 4px 14px rgba(79,142,247,0.2)":"none",whiteSpace:"pre-line"}}>{m.content}</div>
+              </div>
+            ))}
+            {loading&&<div style={{display:"flex",gap:9,alignItems:"center"}}>
+              <div style={{width:30,height:30,borderRadius:8,background:"linear-gradient(135deg,#4f8ef7,#7c6af7)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>⬡</div>
+              <div style={{padding:"11px 15px",background:"var(--bg3)",borderRadius:"15px 15px 15px 4px",border:"1px solid var(--border)",display:"flex",gap:5}}>
+                {[0,1,2].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:"var(--accent)",animation:`bounce 1.2s ease-in-out ${i*0.2}s infinite`}}/>)}
+              </div>
+            </div>}
+            <div ref={endRef}/>
+          </div>
+          <div style={{borderTop:"1px solid var(--border)",paddingTop:12,display:"flex",gap:7}}>
+            <input className="inp" value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Ask anything or give a command..." style={{flex:1}}/>
+            <button className="btn bp" onClick={()=>send()} disabled={loading||!input.trim()} style={{flexShrink:0}}>→</button>
+          </div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <div className="card">
+            <div className="st" style={{marginBottom:12}}>💡 Try asking...</div>
+            {chatSuggestions.map(s=>(
+              <button key={s} onClick={()=>send(s)} style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",padding:"9px 13px",color:"var(--text2)",fontSize:12,cursor:"pointer",fontFamily:"DM Sans,sans-serif",textAlign:"left",transition:"all 0.14s",display:"flex",alignItems:"center",gap:7,width:"100%",marginBottom:6}}>
+                <span style={{color:"var(--accent)"}}>→</span>{s}
+              </button>
+            ))}
+          </div>
+          <div className="card">
+            <div className="st" style={{marginBottom:12}}>🤖 Capabilities</div>
+            {[
+              {icon:"✉",label:"Compose & send bulk emails",color:"#4f8ef7"},
+              {icon:"◫",label:"Schedule meetings & invites",color:"#7c6af7"},
+              {icon:"◈",label:"Broadcast HR announcements",color:"#3ecf8e"},
+              {icon:"▦",label:"Analyze communication data",color:"#f74f8e"},
+              {icon:"🔔",label:"Auto follow-up on no reply",color:"#f5a623"},
+            ].map(c=>(
+              <div key={c.label} style={{display:"flex",alignItems:"center",gap:9,marginBottom:9}}>
+                <div style={{width:26,height:26,borderRadius:6,background:c.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>{c.icon}</div>
+                <div style={{fontSize:13,color:"var(--text2)"}}>{c.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── ROOT APP ─── */
+export default function App(){
+  const [route,setRoute]=useState("dashboard");
+  const [collapsed,setCollapsed]=useState(false);
+  const sw=collapsed?"64px":"230px";
+
+  const pages={dashboard:<Dashboard setRoute={setRoute}/>,email:<EmailAgent/>,scheduler:<Scheduler/>,hr:<HRComms/>,analytics:<Analytics/>,chat:<AIChat/>};
+
+  return(
+    <>
+      <style>{css}</style>
+      <div className="shell">
+        <Sidebar route={route} setRoute={setRoute} collapsed={collapsed} setCollapsed={setCollapsed}/>
+        <main className="main" style={{marginLeft:sw}}>
+          <div className="pw" key={route}>
+            {pages[route]}
+          </div>
+        </main>
+      </div>
+    </>
   );
 }

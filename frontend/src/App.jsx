@@ -1,6 +1,42 @@
 import { useState, useRef, useEffect } from "react";
 
 const API_URL = "http://localhost:8000/api";
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+
+/* ─── GEMINI HELPER ─── */
+const gemini = async (prompt, systemPrompt = null) => {
+  const body = {
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+  };
+  if (systemPrompt) {
+    body.system_instruction = { parts: [{ text: systemPrompt }] };
+  }
+  const res = await fetch(GEMINI_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+};
+
+const geminiChat = async (history, systemPrompt) => {
+  const contents = history.map(m => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+  const res = await fetch(GEMINI_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents,
+    }),
+  });
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm here to help!";
+};
 
 /* ─── STYLES ─── */
 const css = `
@@ -76,8 +112,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--fb);font-size:14px
 .spin{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes bounce{0%,100%{transform:translateY(0);opacity:.5}50%{transform:translateY(-5px);opacity:1}}
-
-/* ─── AUTH STYLES ─── */
 .auth-shell{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);position:relative;overflow:hidden;}
 .auth-blob1{position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(79,142,247,0.07) 0%,transparent 70%);top:-100px;left:-100px;pointer-events:none;}
 .auth-blob2{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(124,106,247,0.06) 0%,transparent 70%);bottom:-50px;right:-50px;pointer-events:none;}
@@ -192,7 +226,7 @@ const api = {
 };
 
 /* ═══════════════════════════════════════
-   AUTH PAGES
+   AUTH PAGE
 ═══════════════════════════════════════ */
 function AuthPage({ onLogin }) {
   const [tab, setTab] = useState("login");
@@ -206,23 +240,19 @@ function AuthPage({ onLogin }) {
   const reset = () => { setErr(""); setOk(""); };
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    reset(); setLoading(true);
+    e.preventDefault(); reset(); setLoading(true);
     try {
       const data = await api.post("/login", { email, password });
       localStorage.setItem("token", data.token);
       localStorage.setItem("userName", data.name);
       localStorage.setItem("userEmail", data.email);
       onLogin({ name: data.name, email: data.email });
-    } catch (err) {
-      setErr(err.message);
-    }
+    } catch (err) { setErr(err.message); }
     setLoading(false);
   };
 
   const handleRegister = async (e) => {
-    e.preventDefault();
-    reset(); setLoading(true);
+    e.preventDefault(); reset(); setLoading(true);
     try {
       const data = await api.post("/register", { name, email, password });
       localStorage.setItem("token", data.token);
@@ -230,9 +260,7 @@ function AuthPage({ onLogin }) {
       localStorage.setItem("userEmail", data.email);
       setOk("Account created! Welcome to OrgPilot 🎉");
       setTimeout(() => onLogin({ name: data.name, email: data.email }), 800);
-    } catch (err) {
-      setErr(err.message);
-    }
+    } catch (err) { setErr(err.message); }
     setLoading(false);
   };
 
@@ -247,15 +275,12 @@ function AuthPage({ onLogin }) {
         </div>
         <div className="auth-title">{tab === "login" ? "Welcome back" : "Create account"}</div>
         <div className="auth-sub">{tab === "login" ? "Sign in to your OrgPilot workspace" : "Start automating your organization today"}</div>
-
         <div className="auth-tabs">
           <button className={`auth-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); reset(); }}>Sign In</button>
           <button className={`auth-tab ${tab === "register" ? "active" : ""}`} onClick={() => { setTab("register"); reset(); }}>Register</button>
         </div>
-
         {err && <div className="auth-err">⚠ {err}</div>}
         {ok && <div className="auth-ok">✓ {ok}</div>}
-
         <form onSubmit={tab === "login" ? handleLogin : handleRegister}>
           {tab === "register" && (
             <div className="auth-inp-wrap">
@@ -272,10 +297,9 @@ function AuthPage({ onLogin }) {
             <input className="auth-inp" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
           </div>
           <button className="auth-btn" type="submit" disabled={loading}>
-            {loading ? <><div className="spin" /> {tab === "login" ? "Signing in..." : "Creating account..."}</> : tab === "login" ? "Sign In →" : "Create Account →"}
+            {loading ? <><div className="spin" />{tab === "login" ? "Signing in..." : "Creating account..."}</> : tab === "login" ? "Sign In →" : "Create Account →"}
           </button>
         </form>
-
         <div style={{ textAlign: "center", marginTop: 18, fontSize: 12, color: "var(--text3)" }}>
           {tab === "login" ? "Don't have an account? " : "Already have an account? "}
           <button onClick={() => { setTab(tab === "login" ? "register" : "login"); reset(); }}
@@ -306,7 +330,6 @@ function Sidebar({ route, setRoute, collapsed, setCollapsed, user, onLogout }) {
         {collapsed && <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg,#4f8ef7,#7c6af7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>⬡</div>}
         {!collapsed && <button onClick={() => setCollapsed(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "#555a6a", fontSize: 15, padding: 4 }}>←</button>}
       </div>
-
       <nav style={{ flex: 1, padding: "10px 7px", display: "flex", flexDirection: "column", gap: 2 }}>
         {NAV.map(n => (
           <button key={n.id} onClick={() => setRoute(n.id)} style={{ display: "flex", alignItems: "center", gap: collapsed ? 0 : 9, justifyContent: collapsed ? "center" : "flex-start", padding: collapsed ? "10px" : "9px 11px", borderRadius: "var(--radius-sm)", background: route === n.id ? "rgba(79,142,247,0.12)" : "transparent", border: route === n.id ? "1px solid rgba(79,142,247,0.22)" : "1px solid transparent", color: route === n.id ? "#4f8ef7" : "#8b90a0", fontFamily: "DM Sans,sans-serif", fontSize: 13, fontWeight: route === n.id ? 500 : 400, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap", overflow: "hidden" }}>
@@ -315,7 +338,6 @@ function Sidebar({ route, setRoute, collapsed, setCollapsed, user, onLogout }) {
           </button>
         ))}
       </nav>
-
       <div style={{ padding: collapsed ? "14px 7px" : "14px", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
         {!collapsed ? (
           <div>
@@ -446,13 +468,16 @@ function EmailAgent() {
   const generate = async () => {
     if (!topic.trim()) return;
     setLoading(true); setSent(false); setEmail(null); setDoneSteps([]);
-    for (let i = 0; i < agentSteps.length; i++) { setActiveStep(i); await new Promise(r => setTimeout(r, 650)); setDoneSteps(p => [...p, i]); }
+    for (let i = 0; i < agentSteps.length; i++) {
+      setActiveStep(i);
+      await new Promise(r => setTimeout(r, 650));
+      setDoneSteps(p => [...p, i]);
+    }
     setActiveStep(-1);
     try {
       const recips = filtered.map(e => `${e.name} (${e.role}, ${e.dept})`).join(", ");
-      const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: `You are OrgPilot AI email agent. Generate an org email:\n- Topic: ${topic}\n- Dept: ${dept}\n- Recipients: ${recips}\n- Tone: ${tone}\n- Context: ${extra || "None"}\n- Tags: ${tags.join(", ") || "None"}\n\nRespond ONLY with valid JSON no markdown:\n{"subject":"...","body":"full email body with proper paragraphs...","recipient_count":${filtered.length},"estimated_open_rate":"XX%"}` }] }) });
-      const data = await res.json();
-      const text = data.content?.map(c => c.text || "").join("") || "{}";
+      const prompt = `You are OrgPilot AI email agent. Generate an org email:\n- Topic: ${topic}\n- Dept: ${dept}\n- Recipients: ${recips}\n- Tone: ${tone}\n- Context: ${extra || "None"}\n- Tags: ${tags.join(", ") || "None"}\n\nRespond ONLY with valid JSON, no markdown:\n{"subject":"...","body":"full email body with proper paragraphs...","recipient_count":${filtered.length},"estimated_open_rate":"XX%"}`;
+      const text = await gemini(prompt);
       setEmail(JSON.parse(text.replace(/```json|```/g, "").trim()));
     } catch {
       setEmail({ subject: `${topic} — Update`, body: `Dear Team,\n\nThis is regarding: ${topic}.\n\nPlease review and act accordingly.\n\nBest regards,\nOrgPilot AI`, recipient_count: filtered.length, estimated_open_rate: "82%" });
@@ -474,7 +499,7 @@ function EmailAgent() {
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div className="card">
             <div className="st" style={{ marginBottom: 14 }}>📝 Compose with AI</div>
-            <div className="fg"><label className="lbl">Email Topic</label><textarea className="ta" placeholder="e.g. Send project deadline reminder to all developers. Deadline is Friday 6 PM." value={topic} onChange={e => setTopic(e.target.value)} style={{ minHeight: 80 }} /></div>
+            <div className="fg"><label className="lbl">Email Topic</label><textarea className="ta" placeholder="e.g. Send project deadline reminder to all developers." value={topic} onChange={e => setTopic(e.target.value)} style={{ minHeight: 80 }} /></div>
             <div className="g2">
               <div className="fg"><label className="lbl">Department</label><select className="sel" value={dept} onChange={e => setDept(e.target.value)}>{depts.map(d => <option key={d}>{d}</option>)}</select></div>
               <div className="fg"><label className="lbl">Tone</label><select className="sel" value={tone} onChange={e => setTone(e.target.value)}>{tones.map(t => <option key={t}>{t}</option>)}</select></div>
@@ -560,9 +585,8 @@ function Scheduler() {
   const genAgenda = async () => {
     if (!title.trim()) return; setLoading(true);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 400, messages: [{ role: "user", content: `Generate a concise meeting agenda for "${title}". Context: ${context || "Team meeting"}. Plain text, numbered items, max 5. Start with "1."` }] }) });
-      const data = await res.json();
-      setAgenda(data.content?.map(c => c.text || "").join("") || "");
+      const text = await gemini(`Generate a concise meeting agenda for "${title}". Context: ${context || "Team meeting"}. Plain text, numbered items, max 5. Start with "1."`);
+      setAgenda(text || "1. Welcome & attendance\n2. Review action items\n3. Main discussion\n4. Q&A\n5. Next steps");
     } catch { setAgenda("1. Welcome & attendance\n2. Review action items\n3. Main discussion\n4. Q&A\n5. Next steps"); }
     setLoading(false);
   };
@@ -590,7 +614,8 @@ function Scheduler() {
               <div style={{ fontSize: 11, color: "var(--accent)", marginBottom: 7, letterSpacing: "1px" }}>AI GENERATED AGENDA</div>
               <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.8, whiteSpace: "pre-line" }}>{agenda}</div>
             </div>}
-            {scheduled ? <div style={{ background: "rgba(62,207,142,0.1)", border: "1px solid rgba(62,207,142,0.22)", borderRadius: "var(--radius-sm)", padding: "11px", color: "var(--success)", fontSize: 13, textAlign: "center" }}>✓ Scheduled! Invites sent to {selEmps.length || "all"} attendees.</div>
+            {scheduled
+              ? <div style={{ background: "rgba(62,207,142,0.1)", border: "1px solid rgba(62,207,142,0.22)", borderRadius: "var(--radius-sm)", padding: "11px", color: "var(--success)", fontSize: 13, textAlign: "center" }}>✓ Scheduled! Invites sent to {selEmps.length || "all"} attendees.</div>
               : <button className="btn bp" style={{ width: "100%", justifyContent: "center" }} onClick={schedule} disabled={loading || !title.trim()}>🗓 Schedule & Send Invites</button>}
           </div>
           <div className="card">
@@ -645,9 +670,8 @@ function HRComms() {
   const generate = async () => {
     if (!content.trim()) return; setLoading(true); setSent(false);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 500, messages: [{ role: "user", content: `You are OrgPilot HR Agent. Generate a ${type} message.\nTopic: ${content}\nWrite professionally in 3-4 sentences. No subject line. Sign as "OrgPilot HR Agent".` }] }) });
-      const data = await res.json();
-      setGenerated(data.content?.map(c => c.text || "").join("") || "");
+      const text = await gemini(`You are OrgPilot HR Agent. Generate a ${type} message.\nTopic: ${content}\nWrite professionally in 3-4 sentences. No subject line. Sign as "OrgPilot HR Agent".`);
+      setGenerated(text || "");
     } catch { setGenerated(`Dear Team,\n\nWe have an important ${type.toLowerCase()} regarding ${content}. Please review and contact HR for queries.\n\nBest,\nOrgPilot HR Agent`); }
     setLoading(false);
   };
@@ -676,7 +700,8 @@ function HRComms() {
               <div style={{ fontSize: 11, color: "var(--accent)", marginBottom: 7, letterSpacing: "1px" }}>AI GENERATED MESSAGE</div>
               <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.8, whiteSpace: "pre-line" }}>{generated}</div>
             </div>
-            {sent ? <div style={{ background: "rgba(62,207,142,0.1)", border: "1px solid rgba(62,207,142,0.22)", borderRadius: "var(--radius-sm)", padding: "11px", color: "var(--success)", fontSize: 13, textAlign: "center" }}>✓ Sent to all employees!</div>
+            {sent
+              ? <div style={{ background: "rgba(62,207,142,0.1)", border: "1px solid rgba(62,207,142,0.22)", borderRadius: "var(--radius-sm)", padding: "11px", color: "var(--success)", fontSize: 13, textAlign: "center" }}>✓ Sent to all employees!</div>
               : <button className="btn bs" style={{ width: "100%", justifyContent: "center" }} onClick={send} disabled={loading}>📤 Send to All Employees</button>}
           </div>}
         </div>
@@ -787,22 +812,25 @@ function Analytics() {
 }
 
 /* ═══════════════════════════════════════
-   AI CHAT
+   AI CHAT — connected to backend chat.py
 ═══════════════════════════════════════ */
-const SYSTEM = `You are OrgPilot, an intelligent AI communication agent for organizations. Help managers:
+const CHAT_SYSTEM = `You are OrgPilot, an intelligent AI communication agent for organizations. Help managers:
 - Draft and send bulk emails to employees
 - Schedule meetings and calendar invites
 - Handle HR communications (announcements, payslips, etc.)
 - Analyze communication analytics and provide business intelligence
 
-Org data: 248 employees, Departments: Engineering(45), Sales(38), HR(12), Marketing(28), Finance(18). 
-This month: 12,840 emails sent, 84% avg open rate, 94 meetings scheduled. 
+Org data: 248 employees, Departments: Engineering(45), Sales(38), HR(12), Marketing(28), Finance(18).
+This month: 12,840 emails sent, 84% avg open rate, 94 meetings scheduled.
 Engineering top performer (92% open rate). Marketing needs attention (80% open rate).
 
 Be conversational, specific with numbers, and actionable. Keep responses concise.`;
 
-function AIChat() {
-  const [messages, setMessages] = useState([{ role: "assistant", content: "Hey! 👋 I'm OrgPilot AI. I can help you send bulk emails, schedule meetings, broadcast HR announcements, and analyze your communication data. What would you like to do?" }]);
+function AIChat({ user }) {
+  const sessionId = user?.email || "guest";
+  const [messages, setMessages] = useState([
+    { role: "assistant", content: "Hey! 👋 I'm OrgPilot AI. I can help you send bulk emails, schedule meetings, broadcast HR announcements, and analyze your communication data. What would you like to do?" }
+  ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const endRef = useRef(null);
@@ -814,13 +842,36 @@ function AIChat() {
     if (!msg || loading) return;
     setInput("");
     const updated = [...messages, { role: "user", content: msg }];
-    setMessages(updated); setLoading(true);
+    setMessages(updated);
+    setLoading(true);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 800, system: SYSTEM, messages: updated.map(m => ({ role: m.role, content: m.content })) }) });
-      const data = await res.json();
-      const reply = data.content?.map(c => c.text || "").join("") || "I'm here to help!";
-      setMessages(p => [...p, { role: "assistant", content: reply }]);
-    } catch { setMessages(p => [...p, { role: "assistant", content: "Sorry, connectivity issue. Please try again!" }]); }
+      // Send to backend which calls Gemini
+      const res = await fetch(`${API_URL}/chat/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          session_id: sessionId,
+          message: msg,
+          history: updated.slice(0, -1).map(m => ({ role: m.role, content: m.content })),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(p => [...p, { role: "assistant", content: data.reply }]);
+      } else {
+        // Fallback to direct Gemini if backend fails
+        const reply = await geminiChat(updated, CHAT_SYSTEM);
+        setMessages(p => [...p, { role: "assistant", content: reply }]);
+      }
+    } catch {
+      // Fallback to direct Gemini
+      try {
+        const reply = await geminiChat(updated, CHAT_SYSTEM);
+        setMessages(p => [...p, { role: "assistant", content: reply }]);
+      } catch {
+        setMessages(p => [...p, { role: "assistant", content: "Sorry, connectivity issue. Please try again!" }]);
+      }
+    }
     setLoading(false);
   };
 
@@ -837,12 +888,14 @@ function AIChat() {
                 <div style={{ maxWidth: "78%", padding: "11px 15px", borderRadius: m.role === "user" ? "15px 15px 4px 15px" : "15px 15px 15px 4px", background: m.role === "user" ? "linear-gradient(135deg,#4f8ef7,#4f46e5)" : "var(--bg3)", border: m.role === "assistant" ? "1px solid var(--border)" : "none", fontSize: 13, lineHeight: 1.75, color: "var(--text)", whiteSpace: "pre-line" }}>{m.content}</div>
               </div>
             ))}
-            {loading && <div style={{ display: "flex", gap: 9, alignItems: "center" }}>
-              <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,#4f8ef7,#7c6af7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>⬡</div>
-              <div style={{ padding: "11px 15px", background: "var(--bg3)", borderRadius: "15px 15px 15px 4px", border: "1px solid var(--border)", display: "flex", gap: 5 }}>
-                {[0, 1, 2].map(i => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />)}
+            {loading && (
+              <div style={{ display: "flex", gap: 9, alignItems: "center" }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: "linear-gradient(135deg,#4f8ef7,#7c6af7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>⬡</div>
+                <div style={{ padding: "11px 15px", background: "var(--bg3)", borderRadius: "15px 15px 15px 4px", border: "1px solid var(--border)", display: "flex", gap: 5 }}>
+                  {[0, 1, 2].map(i => <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />)}
+                </div>
               </div>
-            </div>}
+            )}
             <div ref={endRef} />
           </div>
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", gap: 7 }}>
@@ -881,7 +934,7 @@ function AIChat() {
 }
 
 /* ═══════════════════════════════════════
-   ROOT APP — AUTH GUARD
+   ROOT APP
 ═══════════════════════════════════════ */
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -895,7 +948,6 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false);
 
   const handleLogin = (userData) => setUser(userData);
-
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userName");
@@ -910,7 +962,7 @@ export default function App() {
     scheduler: <Scheduler />,
     hr: <HRComms />,
     analytics: <Analytics />,
-    chat: <AIChat />,
+    chat: <AIChat user={user} />,
   };
 
   return (

@@ -13,11 +13,12 @@ client = AsyncIOMotorClient(MONGO_URL)
 db     = client[DB_NAME]
 
 # ─── COLLECTIONS ───
-users_collection     = db["users"]
-employees_collection = db["employees"]
-emails_collection    = db["sent_emails"]
-meetings_collection  = db["meetings"]
+users_collection         = db["users"]
+employees_collection     = db["employees"]
+emails_collection        = db["sent_emails"]
+meetings_collection      = db["meetings"]
 announcements_collection = db["announcements"]
+chat_collection          = db["chats"]
 
 # ─── STARTUP: test connection ───
 async def connect_db():

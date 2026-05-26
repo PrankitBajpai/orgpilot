@@ -30,45 +30,46 @@ class ChatRequest(BaseModel):
 # --- ROUTE: Send message ---
 @router.post("/send")
 async def send_message(req: ChatRequest):
-    # Read key fresh on every request
-    gemini_api_key = os.getenv("GEMINI_API_KEY")
-    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}"
+    groq_api_key = os.getenv("GROQ_API_KEY")
 
-    if not gemini_api_key:
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not set")
+    if not groq_api_key:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not set")
 
-    contents = []
+    # Build messages — system first, then history, then new message
+    messages = [{"role": "system", "content": req.system}]
+
     for msg in req.history:
-        contents.append({
-            "role":  "user" if msg.role == "user" else "model",
-            "parts": [{"text": msg.content}]
+        messages.append({
+            "role":    msg.role,
+            "content": msg.content
         })
 
-    contents.append({
-        "role":  "user",
-        "parts": [{"text": req.message}]
+    messages.append({
+        "role":    "user",
+        "content": req.message
     })
-
-    payload = {
-        "system_instruction": {
-            "parts": [{"text": req.system}]
-        },
-        "contents": contents
-    }
 
     async with httpx.AsyncClient() as client_http:
         res = await client_http.post(
-            gemini_url,
-            json=payload,
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {groq_api_key}",
+                "Content-Type":  "application/json",
+            },
+            json={
+                "model":      "llama-3.3-70b-versatile",
+                "messages":   messages,
+                "max_tokens": 800,
+            },
             timeout=30.0,
         )
 
     if res.status_code != 200:
-        raise HTTPException(status_code=500, detail=f"Gemini error: {res.text}")
+        raise HTTPException(status_code=500, detail=f"Groq error: {res.text}")
 
-    data  = res.json()
-    reply = data["candidates"][0]["content"]["parts"][0]["text"]
+    reply = res.json()["choices"][0]["message"]["content"]
 
+    # Save to MongoDB
     await chat_collection.insert_one({
         "session_id": req.session_id,
         "user_msg":   req.message,

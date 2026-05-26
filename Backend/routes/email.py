@@ -1,62 +1,69 @@
+import os
+import resend
 from fastapi import APIRouter, HTTPException
-import anthropic, resend, os, json
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from typing import List, Optional
 
 router = APIRouter()
 
-class EmailRequest(BaseModel):
-    topic: str
-    department: str
-    tone: str
-    recipients: list[str]
+resend.api_key = os.getenv("RESEND_API_KEY")
 
-@router.post("/generate-email")
-async def generate_email(req: EmailRequest):
-    api_key = os.getenv("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="Anthropic API key missing")
 
-    client = anthropic.Anthropic(api_key=api_key)
-    
-    # Using system instruction guidelines to lock in pure JSON responses cleanly
-    message = client.messages.create(
-        model="claude-3-5-sonnet-20241022", # Updated stable production API model
-        max_tokens=1000,
-        system="You are an AI assistant that only outputs valid JSON objects containing 'subject' and 'body' keys. Do not include markdown formatting or backticks.",
-        messages=[{
-            "role": "user",
-            "content": f"Write a {req.tone} email about: {req.topic} targeting the {req.department} department."
-        }]
-    )
-    
-    try:
-        raw_text = message.content[0].text.strip()
-        # Fallback sanitation if Claude still returns markdown blocks
-        if raw_text.startswith("```"):
-            raw_text = raw_text.split("```json")[-1].split("```")[0].strip()
-            
-        email_data = json.loads(raw_text)
-        return {"email": email_data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate valid email configuration schema: {str(e)}")
+class SendEmailRequest(BaseModel):
+    topic: Optional[str] = None
+    department: Optional[str] = None
+    tone: Optional[str] = None
+    recipients: List[EmailStr]
+    subject: str
+    body: str
 
-@router.post("/send-email")
-async def send_email(req: EmailRequest):
-    resend.api_key = os.getenv("RESEND_API_KEY")
+
+@router.post("/email/send")
+async def send_email(payload: SendEmailRequest):
     if not resend.api_key:
-        raise HTTPException(status_code=500, detail="Resend API key missing")
+        raise HTTPException(
+            status_code=500,
+            detail="RESEND_API_KEY is missing in .env"
+        )
 
-    sent_count = 0
-    for recipient in req.recipients:
+    if not payload.recipients:
+        raise HTTPException(
+            status_code=400,
+            detail="No recipients provided"
+        )
+
+    results = []
+    failed = []
+    sent = 0
+
+    for recipient in payload.recipients:
         try:
-            resend.Emails.send({
-                "from": "OrgPilot <onboarding@resend.dev>",
-                "to": recipient,
-                "subject": f"Update regarding {req.topic}",
-                "text": f"This is an update distributed to the {req.department} department."
+            response = resend.Emails.send({
+                "from": os.getenv("FROM_EMAIL", "OrgPilot <onboarding@resend.dev>"),
+                "to": [str(recipient)],
+                "subject": payload.subject,
+                "html": payload.body.replace("\n", "<br/>"),
             })
-            sent_count += 1
+
+            results.append({
+                "email": str(recipient),
+                "status": "sent",
+                "id": response.get("id")
+            })
+            sent += 1
+
         except Exception as e:
-            print(f"Failed sending to {recipient}: {str(e)}")
-            
-    return {"sent": sent_count}
+            failed.append(str(recipient))
+            results.append({
+                "email": str(recipient),
+                "status": "failed",
+                "error": str(e)
+            })
+
+    return {
+        "message": "Email sending completed",
+        "total": len(payload.recipients),
+        "sent": sent,
+        "failed": failed,
+        "results": results
+    }
